@@ -13,7 +13,7 @@ class Node(object):
         self.volume = volume
         self.tra_cost = 0
         self.outlines = []
-        self.in_degree = volume
+        self.in_degree = 0
         self.sup_vol_dict = {name: volume} if node_type == 'supply' else {}
         self.sup_rat_dict = {name: 1.0} if node_type == 'supply' else {}
 
@@ -42,6 +42,8 @@ def get_arcs_list(file_path, sheet_name):
     arcs_list = []
     df = pd.read_excel(file_path, sheet_name=sheet_name)
     for index, row in df.iterrows():
+        if row['volume'] == 0:
+            continue
         up_code = row['point_code_up']
         down_code = row['point_code_down']
         line = Line(row['code'], row['name'], node_dict[up_code], node_dict[down_code],
@@ -104,7 +106,7 @@ def output():
 
 
 if __name__ == '__main__':
-    filepath = 'E:/工作/规划院/20201027资源标签化/gas_analysis.xlsx'
+    filepath = 'E:/工作/规划院/20201027资源标签化/gas_analysis20200408规划数据版本2.xlsx'
     node_dict = get_node_dict(filepath, 'station', 'station')
     supply_dict = get_node_dict(filepath, 'supply', 'supply')
     demand_dict = get_node_dict(filepath, 'demand', 'demand')
@@ -123,5 +125,3 @@ if __name__ == '__main__':
     for arc in arcs_list:
         tra_total += arc.volume * arc.mileage * arc.fee
     print('tra_total:', tra_total)
-
-
