@@ -4,6 +4,7 @@ import pandas as pd
 from openpyxl import load_workbook
 import copy
 import _sqlite3
+from os import path, getcwd
 
 
 class Node(object):
@@ -31,27 +32,27 @@ class Line(object):
         self.volume = volume
 
 
-def get_node_dict(file_path, sheet_name, node_type):
-    node_dict = {}
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
-    for index, row in df.iterrows():
-        node = Node(row['code'], row['name'], node_type, row['volume'] if node_type == 'supply' else 0)
-        node_dict[row['code']] = node
-    return (df, node_dict) if node_type == 'demand' else node_dict
-
-
-def get_arcs_list(file_path, sheet_name, node_dict):
-    arcs_list = []
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
-    for index, row in df.iterrows():
-        if row['volume'] == 0:
-            continue
-        up_code = row['point_code_up']
-        down_code = row['point_code_down']
-        line = Line(row['code'], row['name'], node_dict[up_code], node_dict[down_code],
-                    row['price'], row['mileage'], row['volume'])
-        arcs_list.append(line)
-    return arcs_list
+# def get_node_dict(file_path, sheet_name, node_type):
+#     node_dict = {}
+#     df = pd.read_excel(file_path, sheet_name=sheet_name)
+#     for index, row in df.iterrows():
+#         node = Node(row['code'], row['name'], node_type, row['volume'] if node_type == 'supply' else 0)
+#         node_dict[row['code']] = node
+#     return (df, node_dict) if node_type == 'demand' else node_dict
+#
+#
+# def get_arcs_list(file_path, sheet_name, node_dict):
+#     arcs_list = []
+#     df = pd.read_excel(file_path, sheet_name=sheet_name)
+#     for index, row in df.iterrows():
+#         if row['volume'] == 0:
+#             continue
+#         up_code = row['point_code_up']
+#         down_code = row['point_code_down']
+#         line = Line(row['code'], row['name'], node_dict[up_code], node_dict[down_code],
+#                     row['price'], row['mileage'], row['volume'])
+#         arcs_list.append(line)
+#     return arcs_list
 
 
 def process():
@@ -88,14 +89,14 @@ def process():
 
 
 # 交换反输管段的起终点坐标
-def ex_loc(arc):
-    arc.up_node, arc.down_node = arc.down_node, arc.up_node
-    arc.volume = - arc.volume
-    return arc
+# def ex_loc(arc):
+#     arc.up_node, arc.down_node = arc.down_node, arc.up_node
+#     arc.volume = - arc.volume
+#     return arc
 
 
 def output(file_path):
-    pd.set_option('max_colwidth', 400)
+    pd.set_option('max_colwidth', 200)
     result_df = pd.DataFrame(columns=('code', 'name', 'volume', 'tra_cost', 'sup_ratio', 'sup_vol'))
     for index, node in enumerate(demand_dict.values()):
         result_df.loc[index] = [node.code, node.name, node.volume, node.tra_cost, percentage_trans(node.sup_rat_dict),
@@ -123,7 +124,7 @@ def demand_group(file_path):
     writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
     result_df1.to_excel(writer, sheet_name='result_prov')
     writer.save()
-    print(result_df1)
+    # print(result_df1)
 
     result_df2 = result_df.groupby(['supply', 'province']).sum()
     sub_df = result_df2.groupby('supply').sum()
@@ -136,7 +137,7 @@ def demand_group(file_path):
     writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
     result_df2.to_excel(writer, sheet_name='result_supp')
     writer.save()
-    print(result_df2)
+    # print(result_df2)
 
 
 def percentage_trans(ratio_dict):
@@ -145,10 +146,10 @@ def percentage_trans(ratio_dict):
     return ratio_dict
 
 
-def read_sqlite3():
-    year_id = str(13)
+def read_sqlite3(file_path, year_id):
+    year_id = str(year_id)
     pd.set_option('max_colwidth', 200)
-    with _sqlite3.connect('E:/工作/规划院/20201027资源标签化/20200408.db') as con:
+    with _sqlite3.connect(file_path) as con:
         # 获取场站节点信息
         select_sql = 'SELECT NodeID id, Caption name FROM tbl_Input_Node_Static'
         station_df = pd.read_sql_query(select_sql, con)
@@ -169,10 +170,10 @@ def read_sqlite3():
             if row.volume == 0:
                 continue
             elif row.volume > 0:
-                line = Line('P' + str(row.Index), row.name, station_dict[row.up_node_id],
+                line = Line('P' + str(len(arcs_list)), row.name, station_dict[row.up_node_id],
                             station_dict[row.down_node_id], row.price, 1, row.volume)
             else:
-                line = Line('P' + str(row.Index), row.name, station_dict[row.down_node_id],
+                line = Line('P' + str(len(arcs_list)), row.name, station_dict[row.down_node_id],
                             station_dict[row.up_node_id], row.price, 1, -row.volume)
             arcs_list.append(line)
 
@@ -184,9 +185,9 @@ def read_sqlite3():
         supply_df = pd.read_sql_query(select_sql, con)
         supply_dict = {}
         for row in supply_df.itertuples():
-            node = Node('S' + str(row.Index), row.name, 'supply', row.volume)
-            supply_dict[node.code] = node
             if row.volume == 0: continue
+            node = Node('S' + str(len(supply_dict)), row.name, 'supply', row.volume)
+            supply_dict[node.code] = node
             line = Line('P' + str(len(arcs_list)), row.name, node, station_dict[row.node_id], 0, 1, row.volume)
             arcs_list.append(line)
 
@@ -199,9 +200,9 @@ def read_sqlite3():
         demand_df = pd.read_sql_query(select_sql, con)
         demand_dict = {}
         for row in demand_df.itertuples():
-            node = Node('L' + str(row.Index), row.name, 'demand', province=row.province)
-            demand_dict[node.code] = node
             if row.volume == 0: continue
+            node = Node('L' + str(len(demand_dict)), row.name, 'demand', province=row.province)
+            demand_dict[node.code] = node
             line = Line('P' + str(len(arcs_list)), row.name, station_dict[row.node_id], node, 0, 1, row.volume)
             arcs_list.append(line)
 
@@ -212,13 +213,13 @@ def read_sqlite3():
                      'WHERE b.CaseID = 1 AND b.YearID = ' + year_id
         other_df = pd.read_sql_query(select_sql, con)
         for row in other_df.itertuples():
-            if row.volume >= 0:
+            if row.volume == 0: continue
+            elif row.volume > 0:
                 node = Node('L' + str(len(demand_dict)), row.name, 'demand')
                 demand_dict[node.code] = node
-                if row.volume == 0: continue
                 line = Line('P' + str(len(arcs_list)), row.name, station_dict[row.node_id], node, 0, 1, row.volume)
                 arcs_list.append(line)
-            elif row.volume < 0:
+            else:
                 node = Node('S' + str(len(supply_dict)), row.name, 'supply', -row.volume)
                 supply_dict[node.code] = node
                 line = Line('P' + str(len(arcs_list)), row.name, node, station_dict[row.node_id], 0, 1, -row.volume)
@@ -232,8 +233,8 @@ def read_sqlite3():
                      'WHERE b.CaseID = 1 AND b.YearID = ' + year_id
         other_df = pd.read_sql_query(select_sql, con)
         for row in other_df.itertuples():
-            node = Node('T' + str(row.Index), row.name, 'Tank')
             if row.volume == 0: continue
+            node = Node('T' + str(row.Index), row.name, 'Tank')
             line = Line('P' + str(len(arcs_list)), row.name, station_dict[row.up_node_id], node, 0, 1, row.volume)
             arcs_list.append(line)
             line = Line('P' + str(len(arcs_list)), row.name, node, station_dict[row.down_node_id], 0, 1, row.volume)
@@ -246,9 +247,9 @@ def read_sqlite3():
                      'WHERE b.CaseID = 1 AND b.YearID = ' + year_id
         other_df = pd.read_sql_query(select_sql, con)
         for row in other_df.itertuples():
+            if row.volume == 0: continue
             node = Node('L' + str(len(demand_dict)), row.name, 'demand')
             demand_dict[node.code] = node
-            if row.volume == 0: continue
             line = Line('P' + str(len(arcs_list)), row.name, station_dict[row.node_id], node, 0, 1, row.volume)
             arcs_list.append(line)
 
@@ -256,7 +257,11 @@ def read_sqlite3():
 
 
 if __name__ == '__main__':
-    filepath = 'E:/工作/规划院/20201027资源标签化/gas_analysis2025.xlsx'
+    year = input('请输入规划方案的年份：')
+    db_name = input('请输入数据库的名称(例如20200408.db):')
+    file_path = path.abspath(path.dirname(getcwd())) + '\\'
+    # file_path = 'E:/工作/规划院/20201027资源标签化/'
+    excel_name = 'gas_analysis{}.xlsx'.format(year)
     # node_dict = get_node_dict(filepath, 'station', 'station')
     # supply_dict = get_node_dict(filepath, 'supply', 'supply')
     # demand_df, demand_dict = get_node_dict(filepath, 'demand', 'demand')
@@ -266,7 +271,7 @@ if __name__ == '__main__':
     # arcs_list = [ex_loc(arc) if arc.volume < 0 else arc for arc in arcs_list]
     # process()
     # output(filepath)
-    # demand_group(filepath, demand_df)
+    # demand_group(filepath)
 
     # tra_total = 0
     # for key, value in demand_dict.items():
@@ -276,10 +281,11 @@ if __name__ == '__main__':
     # for arc in arcs_list:
     #     tra_total += arc.volume * arc.mileage * arc.fee
     # print('tra_total:', tra_total)
-    supply_dict, demand_dict, arcs_list = read_sqlite3()
+    year_id = int(year) - 2012
+    supply_dict, demand_dict, arcs_list = read_sqlite3(file_path + db_name, year_id)
     process()
-    output(filepath)
-    demand_group(filepath)
+    output(file_path + excel_name)
+    demand_group(file_path + excel_name)
     tra_total = 0
     for key, value in demand_dict.items():
         tra_total += value.tra_cost
