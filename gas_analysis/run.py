@@ -6,6 +6,9 @@ import copy
 import _sqlite3
 from os import path, getcwd
 
+supply_dict = None
+demand_dict = None
+arcs_list = None
 
 class Node(object):
     def __init__(self, code, name, node_type, volume=0, province=''):
@@ -56,6 +59,7 @@ class Line(object):
 
 
 def process():
+    global supply_dict, arcs_list
     # 初始化各节点的入度值
     for arc in arcs_list:
         arc.up_node.outlines.append(arc)
@@ -96,6 +100,7 @@ def process():
 
 
 def output(file_path):
+    global demand_dict
     pd.set_option('max_colwidth', 200)
     result_df = pd.DataFrame(columns=('code', 'name', 'volume', 'tra_cost', 'sup_ratio', 'sup_vol'))
     for index, node in enumerate(demand_dict.values()):
@@ -106,6 +111,7 @@ def output(file_path):
 
 
 def demand_group(file_path):
+    global demand_dict
     pd.set_option('max_colwidth', 200)
     result_df = pd.DataFrame(columns=('province', 'supply', 'volume'))
     for node in demand_dict.values():
@@ -147,6 +153,7 @@ def percentage_trans(ratio_dict):
 
 
 def read_sqlite3(file_path, year_id):
+    global supply_dict, demand_dict, arcs_list
     year_id = str(year_id)
     pd.set_option('max_colwidth', 200)
     with _sqlite3.connect(file_path) as con:
@@ -256,12 +263,28 @@ def read_sqlite3(file_path, year_id):
     return supply_dict, demand_dict, arcs_list
 
 
+def accul(db_file_path, year_id):
+    supply_dict, demand_dict, arcs_list = read_sqlite3(db_file_path, year_id)
+    process(supply_dict, arcs_list)
+    # output(file_path + excel_name)
+    # demand_group(file_path + excel_name)
+    # tra_total = 0
+    # for key, value in demand_dict.items():
+    #     tra_total += value.tra_cost
+    # print('tra_total:', tra_total)
+    # tra_total = 0
+    # for arc in arcs_list:
+    #     tra_total += arc.volume * arc.mileage * arc.fee
+    # print('tra_total:', tra_total)
+
+
 if __name__ == '__main__':
-    year = input('请输入规划方案的年份：')
-    db_name = input('请输入数据库的名称(例如20200408.db):')
-    file_path = path.abspath(path.dirname(getcwd())) + '\\'
-    # file_path = 'E:/工作/规划院/20201027资源标签化/'
-    excel_name = 'gas_analysis{}.xlsx'.format(year)
+    # year = input('请输入规划方案的年份：')
+    # db_name = input('请输入数据库的名称(例如20200408.db):')
+    # file_path = path.abspath(path.dirname(getcwd())) + '\\'
+    # # file_path = 'E:/工作/规划院/20201027资源标签化/'
+    # excel_name = 'gas_analysis{}.xlsx'.format(year)
+
     # node_dict = get_node_dict(filepath, 'station', 'station')
     # supply_dict = get_node_dict(filepath, 'supply', 'supply')
     # demand_df, demand_dict = get_node_dict(filepath, 'demand', 'demand')
@@ -281,16 +304,20 @@ if __name__ == '__main__':
     # for arc in arcs_list:
     #     tra_total += arc.volume * arc.mileage * arc.fee
     # print('tra_total:', tra_total)
-    year_id = int(year) - 2012
-    supply_dict, demand_dict, arcs_list = read_sqlite3(file_path + db_name, year_id)
+    # year_id = int(year) - 2012
+    # supply_dict, demand_dict, arcs_list = read_sqlite3(file_path + db_name, year_id)
+    # process()
+    # output(file_path + excel_name)
+    # demand_group(file_path + excel_name)
+    # tra_total = 0
+    # for key, value in demand_dict.items():
+    #     tra_total += value.tra_cost
+    # print('tra_total:', tra_total)
+    # tra_total = 0
+    # for arc in arcs_list:
+    #     tra_total += arc.volume * arc.mileage * arc.fee
+    # print('tra_total:', tra_total)
+    supply_dict, demand_dict, arcs_list = read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 13)
     process()
-    output(file_path + excel_name)
-    demand_group(file_path + excel_name)
-    tra_total = 0
-    for key, value in demand_dict.items():
-        tra_total += value.tra_cost
-    print('tra_total:', tra_total)
-    tra_total = 0
-    for arc in arcs_list:
-        tra_total += arc.volume * arc.mileage * arc.fee
-    print('tra_total:', tra_total)
+    output('C:/Users/T9971/Desktop/gas_analysis{}.xlsx'.format(2013))
+    demand_group('C:/Users/T9971/Desktop/gas_analysis{}.xlsx'.format(2013))
