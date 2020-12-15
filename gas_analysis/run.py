@@ -62,10 +62,10 @@ class Line(object):
 
 def process():
     global supply_dict, arcs_list
-    # 初始化各节点的入度值
-    for arc in arcs_list:
-        arc.up_node.outlines.append(arc)
-        arc.down_node.in_degree += 1
+    # # 初始化各节点的入度值
+    # for arc in arcs_list:
+    #     arc.up_node.outlines.append(arc)
+    #     arc.down_node.in_degree += 1
 
     # 将气源节点添加到链表中
     linklist = []
@@ -268,92 +268,66 @@ def read_sqlite3(file_path, year_id):
 def accul(db_file_path, year_id):
     supply_dict, demand_dict, arcs_list = read_sqlite3(db_file_path, year_id)
     process(supply_dict, arcs_list)
-    # output(file_path + excel_name)
-    # demand_group(file_path + excel_name)
-    # tra_total = 0
-    # for key, value in demand_dict.items():
-    #     tra_total += value.tra_cost
-    # print('tra_total:', tra_total)
-    # tra_total = 0
-    # for arc in arcs_list:
-    #     tra_total += arc.volume * arc.mileage * arc.fee
-    # print('tra_total:', tra_total)
 
 
 # 初始化各节点的下游路径集合
 def ini_outlines():
     global supply_dict, arcs_list
-    # 初始化各节点的下游路径集合
+    # 初始化各节点的下游路径集合和入度值
     for arc in arcs_list:
         arc.up_node.outlines.append(arc)
         arc.down_node.in_degree += 1
-        arc.down_node.up_arcs.append(arc)
 
 
 # 计算气源点supply_node就近销售的用户
 def sales_nearby(supply_node):
     global supply_dict, arcs_list
-    demand_list = []
-    linklist = []
-    linklist.append(supply_node)
+    demandlist = []
+    linklist = [supply_node]
+    print(supply_node.code, supply_node.name, supply_node.volume)
     while len(linklist):
         node = linklist.pop(0)
         for arc in node.outlines:
             down_node = arc.down_node
             down_node.deepth += arc.mileage
-            if down_node.type == ‘demand’:
+            down_node.up_arcs = node.up_arcs[:]
+            down_node.up_arcs.append(arc)
+            if down_node.type == 'demand':
+                demandlist.append(down_node)
+                down_node.volume = arc.volume
                 if down_node.volume <= supply_node.volume:
-                    down_node.sup_vol_dict[supply_name] = down_node.volume
-                    down_node.sup_rat_dict[supply_name] = 1
+                    down_node.sup_vol_dict[supply_node.name] = down_node.volume
+                    down_node.sup_rat_dict[supply_node.name] = 1
                     supply_node.volume -= down_node.volume
-                    down_node.up_arcs = map(lambda arc: arc.volume - down_node.volume, down_node.up_arcs)
-                    node.outlines.remove(arc)
-                else:
-                    down_node.sup_vol_dict[supply_name] = supply_node.volume
-                    supply_node.volume -= down_node.volume
-                    down_node.up_arcs = map(lambda arc: arc.volume - supply_node.volume, down_node.up_arcs)
-            else:
-                for index, node in enumerate(linklist):
-                    if down_node.deepth > node.deepth:
-                        linklist.insert(index + 1, down_node)
-                        break
+                    for arc in down_node.up_arcs:  # 流过的路径减去相应的流量
+                        arc.volume -= down_node.volume
+                    print(supply_node.code, supply_node.name, supply_node.volume,
+                          down_node.code, down_node.name, down_node.volume, down_node.sup_vol_dict.values())
+                else:  # down_node.volume > supply_node.volume
+                    down_node.sup_vol_dict[supply_node.name] = supply_node.volume
+                    for arc in down_node.up_arcs:  # 流过的路径减去相应的流量
+                        arc.volume -= supply_node.volume
+                    supply_node.volume = 0
+                    print(supply_node.code, supply_node.name, supply_node.volume,
+                          down_node.code, down_node.name, down_node.volume, down_node.sup_vol_dict.values())
+                    break
+
+            else:  # 按深度大小排序，小的排在前面
+                # linklist.append(down_node)
+                if len(linklist) == 0:
                     linklist.append(down_node)
+                elif down_node.deepth <= linklist[0].deepth:
+                    linklist.insert(0, down_node)
+                else:
+                    for index, node in enumerate(linklist):
+                        if down_node.deepth > node.deepth:
+                            linklist.insert(index + 1, down_node)
         if supply_node.volume == 0:
             break
-
+    print(supply_node.code, supply_node.name, supply_node.volume)
 
 
 if __name__ == '__main__':
-    # year = input('请输入规划方案的年份：')
-    # db_name = input('请输入数据库的名称(例如20200408.db):')
-    # file_path = path.abspath(path.dirname(getcwd())) + '\\'
-    # # file_path = 'E:/工作/规划院/20201027资源标签化/'
-    # excel_name = 'gas_analysis{}.xlsx'.format(year)
-
-    # node_dict = get_node_dict(filepath, 'station', 'station')
-    # supply_dict = get_node_dict(filepath, 'supply', 'supply')
-    # demand_df, demand_dict = get_node_dict(filepath, 'demand', 'demand')
-    # node_dict.update(supply_dict)
-    # node_dict.update(demand_dict)
-    # arcs_list = get_arcs_list(filepath, 'arcs', node_dict)
-    # arcs_list = [ex_loc(arc) if arc.volume < 0 else arc for arc in arcs_list]
-    # process()
-    # output(filepath)
-    # demand_group(filepath)
-
-    # tra_total = 0
-    # for key, value in demand_dict.items():
-    #     tra_total += value.tra_cost
-    # print('tra_total:', tra_total)
-    # tra_total = 0
-    # for arc in arcs_list:
-    #     tra_total += arc.volume * arc.mileage * arc.fee
-    # print('tra_total:', tra_total)
-    # year_id = int(year) - 2012
-    # supply_dict, demand_dict, arcs_list = read_sqlite3(file_path + db_name, year_id)
-    # process()
-    # output(file_path + excel_name)
-    # demand_group(file_path + excel_name)
     # tra_total = 0
     # for key, value in demand_dict.items():
     #     tra_total += value.tra_cost
@@ -363,10 +337,18 @@ if __name__ == '__main__':
     #     tra_total += arc.volume * arc.mileage * arc.fee
     # print('tra_total:', tra_total)
     read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 2013 - 2012)
-    process()
-    pd.set_option('max_colwidth', 200)
-    result_df = pd.DataFrame(columns=('code', 'name', 'volume', 'tra_cost', 'sup_ratio', 'sup_vol'))
-    for index, node in enumerate(demand_dict.values()):
-        result_df.loc[index] = [node.code, node.name, node.volume, node.tra_cost, percentage_trans(node.sup_rat_dict),
-                                node.sup_vol_dict]
-    print(result_df)
+    ini_outlines()
+    # process()
+    # pd.set_option('max_colwidth', 200)
+    # result_df = pd.DataFrame(columns=('code', 'name', 'volume', 'tra_cost', 'sup_ratio', 'sup_vol'))
+    # for index, node in enumerate(demand_dict.values()):
+    #     result_df.loc[index] = [node.code, node.name, node.volume, node.tra_cost, percentage_trans(node.sup_rat_dict),
+    #                             node.sup_vol_dict]
+    # print(result_df)
+    list = list(supply_dict.values())
+    # for supply in list:
+    #     print(supply.code, supply.name)
+    sales_nearby(list[13])
+    # process()
+    # output('E:/工作/规划院/20201027资源标签化/gas_analysis2013(1).xlsx')
+    # demand_group('E:/工作/规划院/20201027资源标签化/gas_analysis2013(1).xlsx')
