@@ -20,6 +20,8 @@ class Node(object):
         self.tra_cost = 0
         self.outlines = []
         self.in_degree = 0
+        self.deepth = 0
+        self.up_arcs = []
         self.sup_vol_dict = {name: volume} if node_type == 'supply' else {}
         self.sup_rat_dict = {name: 1.0} if node_type == 'supply' else {}
 
@@ -278,6 +280,49 @@ def accul(db_file_path, year_id):
     # print('tra_total:', tra_total)
 
 
+# 初始化各节点的下游路径集合
+def ini_outlines():
+    global supply_dict, arcs_list
+    # 初始化各节点的下游路径集合
+    for arc in arcs_list:
+        arc.up_node.outlines.append(arc)
+        arc.down_node.in_degree += 1
+        arc.down_node.up_arcs.append(arc)
+
+
+# 计算气源点supply_node就近销售的用户
+def sales_nearby(supply_node):
+    global supply_dict, arcs_list
+    demand_list = []
+    linklist = []
+    linklist.append(supply_node)
+    while len(linklist):
+        node = linklist.pop(0)
+        for arc in node.outlines:
+            down_node = arc.down_node
+            down_node.deepth += arc.mileage
+            if down_node.type == ‘demand’:
+                if down_node.volume <= supply_node.volume:
+                    down_node.sup_vol_dict[supply_name] = down_node.volume
+                    down_node.sup_rat_dict[supply_name] = 1
+                    supply_node.volume -= down_node.volume
+                    down_node.up_arcs = map(lambda arc: arc.volume - down_node.volume, down_node.up_arcs)
+                    node.outlines.remove(arc)
+                else:
+                    down_node.sup_vol_dict[supply_name] = supply_node.volume
+                    supply_node.volume -= down_node.volume
+                    down_node.up_arcs = map(lambda arc: arc.volume - supply_node.volume, down_node.up_arcs)
+            else:
+                for index, node in enumerate(linklist):
+                    if down_node.deepth > node.deepth:
+                        linklist.insert(index + 1, down_node)
+                        break
+                    linklist.append(down_node)
+        if supply_node.volume == 0:
+            break
+
+
+
 if __name__ == '__main__':
     # year = input('请输入规划方案的年份：')
     # db_name = input('请输入数据库的名称(例如20200408.db):')
@@ -317,7 +362,11 @@ if __name__ == '__main__':
     # for arc in arcs_list:
     #     tra_total += arc.volume * arc.mileage * arc.fee
     # print('tra_total:', tra_total)
-    supply_dict, demand_dict, arcs_list = read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 13)
+    read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 2013 - 2012)
     process()
-    output('C:/Users/T9971/Desktop/gas_analysis{}.xlsx'.format(2013))
-    demand_group('C:/Users/T9971/Desktop/gas_analysis{}.xlsx'.format(2013))
+    pd.set_option('max_colwidth', 200)
+    result_df = pd.DataFrame(columns=('code', 'name', 'volume', 'tra_cost', 'sup_ratio', 'sup_vol'))
+    for index, node in enumerate(demand_dict.values()):
+        result_df.loc[index] = [node.code, node.name, node.volume, node.tra_cost, percentage_trans(node.sup_rat_dict),
+                                node.sup_vol_dict]
+    print(result_df)
