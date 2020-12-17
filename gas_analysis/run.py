@@ -317,16 +317,13 @@ def sales_nearby(supply_node):
                     break
 
             else:  # 按深度大小排序，小的排在前面
-                # linklist.append(down_node)
-                if len(linklist) == 0:
-                    linklist.append(down_node)
-                elif down_node.deepth <= linklist[0].deepth:
-                    linklist.insert(0, down_node)
-                else:
-                    for index, node in enumerate(linklist):
-                        if down_node.deepth > node.deepth:
-                            linklist.insert(index + 1, down_node)
-                            break
+                linklist.append(down_node)
+                index = len(linklist) - 1
+                while index > 0:
+                    if linklist[index].deepth < linklist[index-1].deepth:
+                        linklist[index], linklist[index-1] = linklist[index-1], linklist[index]
+                        index -= 1
+                    else: break
                 for a in linklist:
                     print('※※※※', a.code, a.name, a.deepth)
         if supply_node.volume == 0:
@@ -343,7 +340,7 @@ if __name__ == '__main__':
     # for arc in arcs_list:
     #     tra_total += arc.volume * arc.mileage * arc.fee
     # print('tra_total:', tra_total)
-    read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 2025 - 2012)
+    read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 2020 - 2012)
     ini_outlines()
     # process()
     # pd.set_option('max_colwidth', 200)
@@ -355,13 +352,14 @@ if __name__ == '__main__':
     list = list(supply_dict.values())
     for supply in list:
         print(supply.code, supply.name)
-    num = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 25, 26, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+    num2020 = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
            43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
            68, 69, 70, 71, 72, 73, 74, 75]
-    num = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 26, 27, 28, 29, 32, 33, 34, 35, 36]
-    for index, n in enumerate(num):
+    num2025 = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36]
+    num2030 = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 26, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38]
+    for index, n in enumerate(num2020):
         sales_nearby(list[n])
-    # sales_nearby(list[28])
+    # sales_nearby(list[36])
     process()
-    output('E:/工作/规划院/20201027资源标签化/gas_analysis2025(1).xlsx')
-    demand_group('E:/工作/规划院/20201027资源标签化/gas_analysis2025(1).xlsx')
+    output('E:/工作/规划院/20201027资源标签化/gas_analysis2020  考虑就近销售.xlsx')
+    demand_group('E:/工作/规划院/20201027资源标签化/gas_analysis2020  考虑就近销售.xlsx')
