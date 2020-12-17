@@ -287,29 +287,33 @@ def sales_nearby(supply_node):
     print(supply_node.code, supply_node.name, supply_node.volume)
     while len(linklist):
         node = linklist.pop(0)
+        print('🔺🔺', node.code, node.name)
         for arc in node.outlines:
+            print('🔺', arc.code, arc.name)
+        for arc in node.outlines:
+            print('⭐', arc.code, arc.name, arc.up_node.name, arc.down_node.name, arc.volume)
             down_node = arc.down_node
-            down_node.deepth += arc.mileage
+            down_node.deepth = node.deepth + arc.mileage
             down_node.up_arcs = node.up_arcs[:]
             down_node.up_arcs.append(arc)
             if down_node.type == 'demand':
                 demandlist.append(down_node)
                 down_node.volume = arc.volume
-                if down_node.volume <= supply_node.volume:
+                if down_node.volume < supply_node.volume:
                     down_node.sup_vol_dict[supply_node.name] = down_node.volume
                     down_node.sup_rat_dict[supply_node.name] = 1
                     supply_node.volume -= down_node.volume
                     for arc in down_node.up_arcs:  # 流过的路径减去相应的流量
                         arc.volume -= down_node.volume
-                    print(supply_node.code, supply_node.name, supply_node.volume,
-                          down_node.code, down_node.name, down_node.volume, down_node.sup_vol_dict.values())
-                else:  # down_node.volume > supply_node.volume
+                    print(supply_node.code, supply_node.name, supply_node.volume, down_node.code, down_node.name,
+                          down_node.volume, down_node.sup_vol_dict.values(), down_node.province)
+                else:  # down_node.volume >= supply_node.volume
                     down_node.sup_vol_dict[supply_node.name] = supply_node.volume
                     for arc in down_node.up_arcs:  # 流过的路径减去相应的流量
                         arc.volume -= supply_node.volume
                     supply_node.volume = 0
-                    print(supply_node.code, supply_node.name, supply_node.volume,
-                          down_node.code, down_node.name, down_node.volume, down_node.sup_vol_dict.values())
+                    print(supply_node.code, supply_node.name, supply_node.volume, down_node.code, down_node.name,
+                          down_node.volume, down_node.sup_vol_dict.values(), down_node.province)
                     break
 
             else:  # 按深度大小排序，小的排在前面
@@ -322,6 +326,9 @@ def sales_nearby(supply_node):
                     for index, node in enumerate(linklist):
                         if down_node.deepth > node.deepth:
                             linklist.insert(index + 1, down_node)
+                            break
+                for a in linklist:
+                    print('※※※※', a.code, a.name, a.deepth)
         if supply_node.volume == 0:
             break
     print(supply_node.code, supply_node.name, supply_node.volume)
@@ -336,7 +343,7 @@ if __name__ == '__main__':
     # for arc in arcs_list:
     #     tra_total += arc.volume * arc.mileage * arc.fee
     # print('tra_total:', tra_total)
-    read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 2013 - 2012)
+    read_sqlite3('E:/工作/规划院/20201027资源标签化/20200408.db', 2025 - 2012)
     ini_outlines()
     # process()
     # pd.set_option('max_colwidth', 200)
@@ -346,9 +353,15 @@ if __name__ == '__main__':
     #                             node.sup_vol_dict]
     # print(result_df)
     list = list(supply_dict.values())
-    # for supply in list:
-    #     print(supply.code, supply.name)
-    sales_nearby(list[13])
-    # process()
-    # output('E:/工作/规划院/20201027资源标签化/gas_analysis2013(1).xlsx')
-    # demand_group('E:/工作/规划院/20201027资源标签化/gas_analysis2013(1).xlsx')
+    for supply in list:
+        print(supply.code, supply.name)
+    num = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 25, 26, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+           43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
+           68, 69, 70, 71, 72, 73, 74, 75]
+    num = [0, 1, 4, 6, 7, 9, 10, 11, 12, 13, 26, 27, 28, 29, 32, 33, 34, 35, 36]
+    for index, n in enumerate(num):
+        sales_nearby(list[n])
+    # sales_nearby(list[28])
+    process()
+    output('E:/工作/规划院/20201027资源标签化/gas_analysis2025(1).xlsx')
+    demand_group('E:/工作/规划院/20201027资源标签化/gas_analysis2025(1).xlsx')
